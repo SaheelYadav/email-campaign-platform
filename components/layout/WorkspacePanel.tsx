@@ -213,13 +213,13 @@ export function WorkspacePanel({ isOpen, onClose, onOpenFAQ }: WorkspacePanelPro
                 Platform Resources
               </h3>
               <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-2.5 divide-y divide-slate-100 dark:divide-slate-800">
-                <a href="#" className="flex items-center justify-between p-3 text-sm font-bold text-slate-700 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors">
+                <Link href="/docs" onClick={onClose} className="flex items-center justify-between p-3 text-sm font-bold text-slate-700 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors">
                   <span className="flex items-center gap-2">
                     <BookOpen className="h-4 w-4 text-blue-500" />
                     Documentation
                   </span>
                   <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-                </a>
+                </Link>
                 <button onClick={onOpenFAQ} className="w-full flex items-center justify-between p-3 text-sm font-bold text-slate-700 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors">
                   <span className="flex items-center gap-2">
                     <HelpCircle className="h-4 w-4 text-purple-500" />
@@ -240,9 +240,14 @@ export function WorkspacePanel({ isOpen, onClose, onOpenFAQ }: WorkspacePanelPro
                   <MapPin className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
                   <div>
                     <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500">Office Location</h4>
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mt-0.5 leading-relaxed">
+                    <a
+                      href="https://maps.app.goo.gl/hX2bF5jcU1JFSWoq9"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 mt-0.5 leading-relaxed block hover:underline transition-colors"
+                    >
                       {orgData.address || "T-Hub 2.0, Knowledge City,\nHyderabad, Telangana"}
-                    </p>
+                    </a>
                   </div>
                 </div>
 

@@ -9,6 +9,14 @@ import { Campaign, CampaignStatus, CampaignFormData, CampaignWizardData } from "
 import { CampaignAccessControl } from "@/lib/rbac/campaign-access"
 
 
+function isValidCampaignId(id: any): id is string {
+  return typeof id === 'string' &&
+    id.trim().length > 0 &&
+    id !== 'new' &&
+    id !== 'undefined' &&
+    id !== 'null'
+}
+
 // Wizard step types
 export type WizardStep = 1 | 2 | 3 | 4
 export type WizardMode = 'create' | 'edit'
@@ -134,17 +142,18 @@ export function useCampaignWizard() {
 
   // Determine mode from URL
   useEffect(() => {
-    const isEdit = params.id && params.id !== 'new'
+    const rawId = Array.isArray(params.id) ? params.id[0] : params.id
+    const isEdit = isValidCampaignId(rawId)
     if (isEdit) {
       setState(prev => ({
         ...prev,
         mode: 'edit',
-        campaignId: params.id as string
+        campaignId: rawId
       }))
     } else {
       setState(prev => {
-        // GUARD: Don't reset if campaignId was already set by 409 recovery
-        if (prev.campaignId) return prev
+        // GUARD: Don't reset if campaignId was already set by 409 recovery or prior autosave
+        if (isValidCampaignId(prev.campaignId)) return prev
         return {
           ...prev,
           mode: 'create',
@@ -556,18 +565,26 @@ export function useCampaignWizard() {
         }
       }
 
-      const campaignId = savedCampaign?.id || state.campaignId
+      const rawCampaignId = savedCampaign?.id || state.campaignId
+      const campaignId = isValidCampaignId(rawCampaignId) ? rawCampaignId : undefined
 
       console.log(" AUTOSAVE DEBUG: Campaign saved successfully:", campaignId)
 
+      const hasRecipientsToSave = 
+        (autosavePayload.selectedRecipients && autosavePayload.selectedRecipients.length > 0) ||
+        (autosavePayload.selectedSegments && autosavePayload.selectedSegments.length > 0) ||
+        (autosavePayload.excludedRecipients && autosavePayload.excludedRecipients.length > 0) ||
+        !!autosavePayload.includedTags ||
+        !!autosavePayload.excludedTags
+
       // Guard: only save recipients if we have a valid campaign ID
-      if (campaignId && (autosavePayload.selectedRecipients.length > 0 || autosavePayload.excludedRecipients.length > 0 || autosavePayload.includedTags || autosavePayload.excludedTags)) {
+      if (campaignId && hasRecipientsToSave) {
         try {
           const recipResponse = await fetch(`/api/campaigns/${campaignId}/recipients`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              recipientListIds: autosavePayload.selectedRecipients,
+              recipientListIds: autosavePayload.selectedRecipients || [],
               recipientSegmentIds: autosavePayload.selectedSegments || [],
               excludedListIds: autosavePayload.excludedRecipients || [],
               includedTags: autosavePayload.includedTags || undefined,

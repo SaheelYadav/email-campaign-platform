@@ -28,25 +28,25 @@ interface HelpTopicItem {
 const QUICK_RESOURCES: ResourceItem[] = [
   {
     title: "Getting Started Guide",
-    href: "#",
+    href: "/docs#getting-started",
     icon: <BookOpen className="w-5 h-5" />,
     colorClass: "text-blue-500 bg-blue-500/10 dark:bg-blue-500/20"
   },
   {
     title: "Documentation",
-    href: "#",
+    href: "/docs",
     icon: <ExternalLink className="w-5 h-5" />,
     colorClass: "text-emerald-500 bg-emerald-500/10 dark:bg-emerald-500/20"
   },
   {
     title: "Video Tutorials",
-    href: "#",
+    href: "/tutorials",
     icon: <Play className="w-5 h-5" />,
     colorClass: "text-purple-500 bg-purple-500/10 dark:bg-purple-500/20"
   },
   {
     title: "System Status",
-    href: "#",
+    href: "/status",
     icon: <Activity className="w-5 h-5" />,
     colorClass: "text-amber-500 bg-amber-500/10 dark:bg-amber-500/20"
   }
@@ -135,9 +135,14 @@ export function SupportCenter() {
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Office Address</h4>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-300 mt-1 leading-relaxed">
+                  <a
+                    href="https://maps.app.goo.gl/hX2bF5jcU1JFSWoq9"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-semibold text-slate-800 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 mt-1 leading-relaxed block hover:underline transition-colors"
+                  >
                     T-Hub 2.0, Knowledge City,<br />Hyderabad, Telangana
-                  </p>
+                  </a>
                 </div>
               </div>
 

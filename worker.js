@@ -59,7 +59,7 @@ Sentry.init({
 // --- Graceful Shutdown & Lifecycle State ---
 const os = require('os');
 const HOSTNAME = os.hostname();
-const WORKER_ID = `${HOSTNAME}-${process.pid}-${Date.now()}`;
+const WORKER_ID = `email-worker-${HOSTNAME}-${process.pid}-${Date.now()}`;
 
 // Re-initialize logger with full worker identity context.
 // Every log line from this point will automatically include
@@ -135,7 +135,7 @@ process.on('unhandledRejection', (reason) => {
 logger.info('🚀 Worker is initializing...');
 fs.appendFileSync(logPath, `\n--- Worker Started at ${new Date().toISOString()} ---\n`);
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.WORKER_PORT || (process.env.PORT && process.env.PORT !== '3000' ? process.env.PORT : '3001');
 let globalEmailsProcessed = 0;
 let globalLastProcessedAt = null;
 let isPollingActive = false;

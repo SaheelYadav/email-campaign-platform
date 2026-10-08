@@ -65,3 +65,4 @@ recipients_error_log.txt
 /scripts/verify_launch.ts
 recovered_canvas.txt
 welcome_preview.html
+scratch_*.ts

@@ -20,7 +20,7 @@ Sentry.init({
 })
 
 const HOSTNAME = os.hostname()
-const WORKER_ID = `${HOSTNAME}-${process.pid}-${Date.now()}`
+const WORKER_ID = `analytics-worker-${HOSTNAME}-${process.pid}-${Date.now()}`
 
 Sentry.setTag("workerId", WORKER_ID)
 Sentry.setTag("service", "analytics-worker")
@@ -61,7 +61,84 @@ if (!QUEUE_URL) {
 console.log("Analytics worker started.")
 console.log(`Listening on queue: ${QUEUE_URL}`)
 
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.ANALYTICS_PORT || (process.env.PORT && process.env.PORT !== '3000' ? process.env.PORT : '3002');
+
+async function registerWorkerStartup() {
+  try {
+    const data = {
+      hostname: HOSTNAME,
+      processId: process.pid,
+      status: 'STARTING' as any,
+      version: process.env.APP_VERSION || 'development',
+      environment: process.env.NODE_ENV || 'production',
+      activeMessages: 0,
+      successfulMessages: 0,
+      failedMessages: 0,
+      memoryUsageMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+      uptimeSeconds: Math.round(process.uptime())
+    };
+    await prisma.workerHeartbeat.upsert({
+      where: { id: WORKER_ID },
+      create: { id: WORKER_ID, ...data },
+      update: data
+    });
+  } catch (err) {
+    console.warn("Worker heartbeat registration skipped:", err);
+  }
+}
+
+async function setWorkerHealthy() {
+  try {
+    await prisma.workerHeartbeat.upsert({
+      where: { id: WORKER_ID },
+      create: {
+        id: WORKER_ID,
+        hostname: HOSTNAME,
+        processId: process.pid,
+        status: 'HEALTHY' as any,
+        version: process.env.APP_VERSION || 'development',
+        environment: process.env.NODE_ENV || 'production',
+        activeMessages: 0,
+        successfulMessages: 0,
+        failedMessages: 0,
+        memoryUsageMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+        uptimeSeconds: Math.round(process.uptime())
+      },
+      update: { status: 'HEALTHY' as any }
+    });
+  } catch (err) {
+    console.warn("Worker status change skipped:", err);
+  }
+}
+
+function startHeartbeatInterval() {
+  setInterval(async () => {
+    try {
+      const data = {
+        status: 'HEALTHY' as any,
+        memoryUsageMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+        activeMessages: isPollingActive ? 1 : 0,
+        successfulMessages: globalEventsProcessed,
+        failedMessages: 0,
+        uptimeSeconds: Math.round(process.uptime())
+      };
+      await prisma.workerHeartbeat.upsert({
+        where: { id: WORKER_ID },
+        create: {
+          id: WORKER_ID,
+          hostname: HOSTNAME,
+          processId: process.pid,
+          version: process.env.APP_VERSION || 'development',
+          environment: process.env.NODE_ENV || 'production',
+          ...data
+        },
+        update: data
+      });
+    } catch (err) {
+      console.warn("Worker heartbeat update skipped:", err);
+    }
+  }, 15000); // Poll every 15s to be responsive on status page
+}
 let globalEventsProcessed = 0;
 let globalLastProcessedAt: string | null = null;
 let isPollingActive = false;
@@ -104,6 +181,9 @@ function parseUserAgent(ua: string) {
 }
 
 async function pollAnalyticsQueue() {
+  await registerWorkerStartup()
+  await setWorkerHealthy()
+  startHeartbeatInterval()
   isPollingActive = true
   while (true) {
     try {

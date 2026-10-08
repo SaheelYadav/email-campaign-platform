@@ -23,6 +23,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: campaignId } = await params
+  if (!campaignId || campaignId === "undefined" || campaignId === "null" || campaignId === "new") {
+    return NextResponse.json({ error: "Invalid campaign ID" }, { status: 400 })
+  }
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {

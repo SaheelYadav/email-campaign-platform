@@ -1,5 +1,12 @@
 import { TemplateBlock } from "../types";
 
+function getPaddingValue(padding: any, defaultVal = "20px"): string {
+  if (padding === undefined || padding === null || padding === "") {
+    return defaultVal;
+  }
+  return String(padding);
+}
+
 export function renderBlockToHTML(block: TemplateBlock): string {
   const blockStyles = block.styles || {};
   const blockContent = block.content || {};
@@ -29,7 +36,7 @@ export function renderBlockToHTML(block: TemplateBlock): string {
       const fontFam = blockStyles.fontFamily || "Arial, sans-serif";
       const fontSizeVal = blockStyles.fontSize || "24px";
       const colorVal = blockStyles.color || "#1e293b";
-      const paddingVal = blockStyles.padding || "20px";
+      const paddingVal = getPaddingValue(blockStyles.padding, "20px");
       
       return `
         <!-- Block: Header -->
@@ -50,7 +57,7 @@ export function renderBlockToHTML(block: TemplateBlock): string {
       const fontFam = blockStyles.fontFamily || "Arial, sans-serif";
       const fontSizeVal = blockStyles.fontSize || "14px";
       const colorVal = blockStyles.color || "#333333";
-      const paddingVal = blockStyles.padding || "20px";
+      const paddingVal = getPaddingValue(blockStyles.padding, "20px");
 
       return `
         <!-- Block: Text -->
@@ -71,7 +78,7 @@ export function renderBlockToHTML(block: TemplateBlock): string {
       const buttonBg = blockContent.backgroundColor || "#007bff";
       const buttonColor = blockContent.color || "#ffffff";
       const fontFam = blockStyles.fontFamily || "Arial, sans-serif";
-      const paddingVal = blockStyles.padding || "20px";
+      const paddingVal = getPaddingValue(blockStyles.padding, "20px");
       const borderRadiusVal = blockStyles.borderRadius || "4px";
 
       return `
@@ -99,7 +106,7 @@ export function renderBlockToHTML(block: TemplateBlock): string {
       const width = blockContent.width || 100;
       const unit = blockContent.widthUnit || "%";
       const widthVal = `${width}${unit}`;
-      const paddingVal = blockStyles.padding || "20px";
+      const paddingVal = getPaddingValue(blockStyles.padding, "20px");
       const maxW = unit === "%" ? "100%" : `${width}px`;
       const heightVal = !blockContent.height || blockContent.height === "auto"
         ? "auto"
@@ -137,7 +144,7 @@ export function renderBlockToHTML(block: TemplateBlock): string {
     }
 
     case "divider": {
-      const paddingVal = blockStyles.padding || "20px 0";
+      const paddingVal = getPaddingValue(blockStyles.padding, "20px 0");
       const borderW = blockStyles.borderWidth || "1px";
       const borderC = blockStyles.borderColor || "#e5e7eb";
 
@@ -169,7 +176,7 @@ export function renderBlockToHTML(block: TemplateBlock): string {
       const textAlignment = blockStyles.textAlign || "center";
       const colorVal = blockStyles.color || "#6c757d";
       const fontSizeVal = blockStyles.fontSize || "12px";
-      const paddingVal = blockStyles.padding || "32px 20px";
+      const paddingVal = getPaddingValue(blockStyles.padding, "32px 20px");
 
       return `
         <!-- Block: Footer -->
@@ -328,7 +335,7 @@ export function renderBlockToHTML(block: TemplateBlock): string {
         }
       }
 
-      const paddingVal = blockStyles.padding || "20px";
+      const paddingVal = getPaddingValue(blockStyles.padding, "20px");
 
       return `
         <!-- Block: Social Icons -->
@@ -350,7 +357,7 @@ export function renderBlockToHTML(block: TemplateBlock): string {
     }
 
     case "html": {
-      const paddingVal = blockStyles.padding || "20px";
+      const paddingVal = getPaddingValue(blockStyles.padding, "20px");
       return `
         <!-- Block: Raw HTML -->
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
@@ -543,11 +550,17 @@ export function renderBlocksToHTML(blocks: TemplateBlock[]): string {
       margin-top: 8px !important;
       margin-bottom: 8px !important;
     }
+    ul:first-child {
+      margin-top: 0 !important;
+    }
     ol {
       list-style-type: decimal !important;
       padding-left: 20px !important;
       margin-top: 8px !important;
       margin-bottom: 8px !important;
+    }
+    ol:first-child {
+      margin-top: 0 !important;
     }
     li {
       margin-bottom: 4px !important;

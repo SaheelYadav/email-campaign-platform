@@ -805,6 +805,9 @@ export default function CanvasEditor({
     autocompleteRef.current = autocomplete
   }, [autocomplete])
 
+  // Track the block and field currently loaded in the editor to prevent cursor jumping on keystrokes
+  const lastActiveEditRef = useRef<{ blockId: string | null; field: string | null }>({ blockId: null, field: null })
+
   // Get matching tags for popup suggestions
   const getFilteredSuggestions = useCallback(() => {
     if (!autocomplete) return []
@@ -986,29 +989,70 @@ export default function CanvasEditor({
     }
   }, [editor, editingBlockId, activeEditField, onEditorInit])
 
+  const getDefaultContentValue = (block: TemplateBlock, field: string): string => {
+    const val = block.content?.[field]
+    if (val !== undefined && val !== null && val !== '') {
+      return String(val)
+    }
+    
+    // Fallbacks
+    if (block.type === 'footer') {
+      if (field === 'unsubscribeText') return "You received this email because you're subscribed to our newsletter."
+      if (field === 'company') return "Your Company Name"
+      if (field === 'address') return "123 Business St, City, State 12345"
+      if (field === 'copyright') return `© ${new Date().getFullYear()} Your Company Name. All rights reserved.`
+    }
+    if (block.type === 'header' && field === 'text') {
+      return 'Double click to edit header...'
+    }
+    if (block.type === 'text' && field === 'text') {
+      return 'Double click to edit paragraph content...'
+    }
+    if (block.type === '2column') {
+      if (field === 'text1') return "Column 1 (Double click)"
+      if (field === 'text2') return "Column 2 (Double click)"
+    }
+    if (block.type === '3column') {
+      if (field === 'text1') return "Col 1 (Double click)"
+      if (field === 'text2') return "Col 2 (Double click)"
+      if (field === 'text3') return "Col 3 (Double click)"
+    }
+    return ''
+  }
+
   useEffect(() => {
     if (editor) {
-      if (activeEditField) {
-        const activeBlock = blocks.find(b => b.id === activeEditField.blockId)
+      const currentBlockId = activeEditField?.blockId || editingBlockId || null
+      const currentField = activeEditField?.field || (editingBlockId ? 'text' : null)
+
+      const prevBlockId = lastActiveEditRef.current.blockId
+      const prevField = lastActiveEditRef.current.field
+
+      if (currentBlockId && currentField) {
+        const activeBlock = blocks.find(b => b.id === currentBlockId)
         if (activeBlock) {
-          const textContent = activeBlock.content?.[activeEditField.field] || ''
+          const textContent = getDefaultContentValue(activeBlock, currentField)
+          
+          // Only update editor content if it has changed externally (e.g. undo/redo)
           if (editor.getHTML() !== textContent) {
             editor.commands.setContent(textContent)
           }
-          setTimeout(() => editor.commands.focus('end'), 50)
-        }
-      } else if (editingBlockId) {
-        const activeBlock = blocks.find(b => b.id === editingBlockId)
-        if (activeBlock) {
-          const textContent = activeBlock.content?.text || ''
-          if (editor.getHTML() !== textContent) {
-            editor.commands.setContent(textContent)
+
+          // Only focus and set cursor at the end when first switching to edit this block/field
+          if (currentBlockId !== prevBlockId || currentField !== prevField) {
+            setTimeout(() => {
+              if (editor && !editor.isDestroyed) {
+                editor.commands.focus('end')
+              }
+            }, 50)
           }
-          setTimeout(() => editor.commands.focus('end'), 50)
         }
       }
+
+      // Update the tracking ref
+      lastActiveEditRef.current = { blockId: currentBlockId, field: currentField }
     }
-  }, [editingBlockId, activeEditField, editor])
+  }, [editingBlockId, activeEditField, editor, blocks])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1199,6 +1243,13 @@ export default function CanvasEditor({
       .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
       .join('; ')
 
+    const getPaddingValue = (padding: any, defaultVal = '20px') => {
+      if (padding === undefined || padding === null || padding === '') {
+        return defaultVal
+      }
+      return String(padding)
+    }
+
     const blockStyle: React.CSSProperties = {
       position: 'relative',
       transition: 'all 0.2s ease-in-out'
@@ -1209,7 +1260,7 @@ export default function CanvasEditor({
         case 'header':
           return (
             <div 
-              style={{ padding: '20px', textAlign: 'center', ...block.styles }}
+              style={{ textAlign: 'center', ...block.styles, padding: getPaddingValue(block.styles.padding, '20px') }}
               onDoubleClick={() => setEditingBlockId(block.id)}
             >
               {editingBlockId === block.id && editor ? (
@@ -1227,12 +1278,12 @@ export default function CanvasEditor({
           return (
             <div 
               style={{ 
-                padding: '20px', 
                 fontFamily: 'Arial, sans-serif', 
                 fontSize: '14px', 
                 lineHeight: '1.6',
                 color: block.styles.color || '#333333',
-                ...block.styles 
+                ...block.styles,
+                padding: getPaddingValue(block.styles.padding, '20px')
               }}
               onDoubleClick={() => setEditingBlockId(block.id)}
             >
@@ -1248,7 +1299,7 @@ export default function CanvasEditor({
           )
         case 'button':
           return (
-            <div style={{ padding: '20px', textAlign: 'center', ...block.styles }}>
+            <div style={{ textAlign: 'center', ...block.styles, padding: getPaddingValue(block.styles.padding, '20px') }}>
               <button
                 style={{
                   backgroundColor: block.content.backgroundColor || '#007bff',
@@ -1281,12 +1332,13 @@ export default function CanvasEditor({
           )
         case 'divider':
           return (
-            <div style={{ padding: '20px 0', textAlign: 'center' }}>
+            <div style={{ textAlign: 'center', ...block.styles, padding: getPaddingValue(block.styles.padding, '20px 0') }}>
               <hr style={{
                 border: 'none',
                 borderTop: '1px solid #e5e7eb',
                 width: '100%',
-                ...block.styles
+                ...block.styles,
+                padding: undefined
               }} />
             </div>
           )
@@ -1403,7 +1455,7 @@ export default function CanvasEditor({
 
           return (
             <div
-              style={{ padding: '20px', textAlign: textAlignVal, width: '100%', boxSizing: 'border-box', ...block.styles }}
+              style={{ textAlign: textAlignVal, width: '100%', boxSizing: 'border-box', ...block.styles, padding: getPaddingValue(block.styles.padding, '20px') }}
               onDoubleClick={() => socialLayout === 'follow-section' && setEditingBlockId(block.id)}
             >
               {/* Heading – follow-section only */}
@@ -1465,12 +1517,12 @@ export default function CanvasEditor({
         case 'footer':
           return (
             <div style={{ 
-              padding: '20px', 
               textAlign: 'center', 
               backgroundColor: '#f8f9fa', 
               color: '#6c757d', 
               fontSize: '12px',
-              ...block.styles 
+              ...block.styles,
+              padding: getPaddingValue(block.styles.padding, '32px 20px')
             }}>
               <div 
                 style={{ border: '1px dashed #e5e7eb', padding: '4px', margin: '0 0 10px 0', fontSize: '11px' }}
@@ -1535,7 +1587,7 @@ export default function CanvasEditor({
           const isEditingHtml = htmlEditorState?.blockId === block.id
           return (
             <div 
-              style={{ padding: '20px', position: 'relative' }}
+              style={{ position: 'relative', ...block.styles, padding: getPaddingValue(block.styles.padding, '20px') }}
               onDoubleClick={(e) => {
                 e.stopPropagation()
                 setHtmlEditorState({ blockId: block.id, code: block.content?.html || '' })
@@ -1639,7 +1691,7 @@ export default function CanvasEditor({
             setIsDragging(true)
           }
         }}
-        className={`cursor-pointer rounded-lg border-2 shadow-sm transition-all duration-200 ${
+        className={`group cursor-pointer rounded-lg border-2 shadow-sm transition-all duration-200 ${
           isSelected 
             ? 'border-red-500 bg-red-550/5 shadow-md' 
             : 'border-slate-100 hover:border-red-200 hover:bg-slate-50/30'
@@ -1800,7 +1852,11 @@ export default function CanvasEditor({
 
         {/* Block Controls */}
         <div
-          className={`absolute top-2 right-2 flex gap-1 ${isSelected ? 'opacity-100' : 'opacity-0'} hover:opacity-100 transition-all duration-200 z-40`}
+          className={`absolute top-2 right-2 flex flex-row flex-nowrap items-center gap-1.5 ${
+            isSelected 
+              ? 'opacity-100 pointer-events-auto scale-100' 
+              : 'opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100'
+          } transition-all duration-150 z-40`}
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
         >
@@ -1986,17 +2042,28 @@ export default function CanvasEditor({
       onDrop={handleCanvasDrop}
     >
       <style dangerouslySetInnerHTML={{ __html: `
+        .tiptap-wysiwyg .ProseMirror {
+          outline: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
         .tiptap-wysiwyg ul {
           list-style-type: disc !important;
           padding-left: 1.5rem !important;
           margin-top: 0.5rem !important;
           margin-bottom: 0.5rem !important;
         }
+        .tiptap-wysiwyg ul:first-child {
+          margin-top: 0 !important;
+        }
         .tiptap-wysiwyg ol {
           list-style-type: decimal !important;
           padding-left: 1.5rem !important;
           margin-top: 0.5rem !important;
           margin-bottom: 0.5rem !important;
+        }
+        .tiptap-wysiwyg ol:first-child {
+          margin-top: 0 !important;
         }
         .tiptap-wysiwyg li {
           display: list-item !important;

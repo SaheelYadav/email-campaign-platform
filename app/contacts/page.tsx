@@ -124,7 +124,7 @@ function formatDate(value?: string) {
 }
 
 function ContactsPage() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const searchParams = useSearchParams()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<"lists" | "all">(
@@ -334,10 +334,14 @@ function ContactsPage() {
   }
 
   useEffect(() => {
-    fetchContactLists()
-    fetchCustomFieldsSchema()
-    fetchTagOptions()
-  }, [])
+    if (status === "authenticated") {
+      fetchContactLists()
+      fetchCustomFieldsSchema()
+      fetchTagOptions()
+    } else if (status === "unauthenticated") {
+      router.push("/login")
+    }
+  }, [status, router])
 
   useEffect(() => {
     const tab = searchParams.get("tab")
@@ -404,12 +408,13 @@ function ContactsPage() {
   }, [activeFilters, debouncedSearchTerm, pagination.page, pagination.limit, sortBy, sortDir, tagFilter])
 
   useEffect(() => {
+    if (status !== "authenticated") return
     if (activeTab !== "all") return
 
     const controller = new AbortController()
     fetchAllContacts(controller.signal)
     return () => controller.abort()
-  }, [activeTab, fetchAllContacts])
+  }, [activeTab, fetchAllContacts, status])
 
   const filteredLists = useMemo(() => contactLists.filter((list) =>
     list.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -524,7 +529,15 @@ function ContactsPage() {
     fetchAllContacts()
   }
 
-  if (!session) {
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated" || !session) {
     return null
   }
 
